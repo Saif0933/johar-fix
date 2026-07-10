@@ -5,7 +5,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/address_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../models/category_model.dart';

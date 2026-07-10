@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/theme/app_theme.dart';
-import '../../providers/cart_provider.dart';
 import '../../providers/address_provider.dart';
+import '../../providers/cart_provider.dart';
 
 class PaymentSelectionScreen extends StatefulWidget {
   final String? bookingDate;
@@ -43,11 +43,16 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     });
 
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    final addressProvider = Provider.of<AddressProvider>(context, listen: false);
-    
-    final firstServiceIdVal = cartProvider.cart.isNotEmpty ? cartProvider.cart.first.id : '';
+    final addressProvider = Provider.of<AddressProvider>(
+      context,
+      listen: false,
+    );
+
+    final firstServiceIdVal = cartProvider.cart.isNotEmpty
+        ? cartProvider.cart.first.id
+        : '';
     final serviceIdInt = int.tryParse(firstServiceIdVal.toString()) ?? 0;
-    
+
     final selectedAddressIdVal = addressProvider.selectedAddress?.id ?? '';
     final addressIdInt = int.tryParse(selectedAddressIdVal.toString()) ?? 0;
 
@@ -59,37 +64,46 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
       'payment_method': paymentMethodVal,
       if (widget.bookingDate != null) 'booking_date': widget.bookingDate,
       if (widget.timeSlot != null) 'time_slot': widget.timeSlot,
-      'coupon_code': (widget.couponCode != null && widget.couponCode!.isNotEmpty)
+      'coupon_code':
+          (widget.couponCode != null && widget.couponCode!.isNotEmpty)
           ? widget.couponCode
           : null,
-      
+
       // Fallbacks in case other parts of backend use these keys
-      'items': cartProvider.cart.map((item) => {
-        'service_id': item.id,
-        'qty': item.qty,
-      }).toList(),
+      'items': cartProvider.cart
+          .map((item) => {'service_id': item.id, 'qty': item.qty})
+          .toList(),
       'payment_mode': _selectedMode,
       'total_amount': widget.totalAmount ?? cartProvider.grandTotal,
     };
 
-    final serviceName = cartProvider.cart.isNotEmpty ? cartProvider.cart.first.name : '';
+    final serviceName = cartProvider.cart.isNotEmpty
+        ? cartProvider.cart.first.name
+        : '';
 
     try {
-      final res = await ApiClient.instance.post('/customer/bookings', data: payload);
+      final res = await ApiClient.instance.post(
+        '/customer/bookings',
+        data: payload,
+      );
       if (res.data != null && res.data['success'] == true) {
         final resData = res.data['data'];
-        
+
         if (mounted) {
           if (_selectedMode == 'online') {
             setState(() {
               _bookingId = resData['booking_id']?.toString() ?? '';
               _razorpayOrderId = resData['razorpay_order_id']?.toString() ?? '';
-              _razorpayAmount = double.tryParse(resData['amount']?.toString() ?? '') ?? widget.totalAmount ?? cartProvider.grandTotal;
+              _razorpayAmount =
+                  double.tryParse(resData['amount']?.toString() ?? '') ??
+                  widget.totalAmount ??
+                  cartProvider.grandTotal;
               _submitting = false;
             });
             _showRazorpaySimulationSheet();
           } else {
-            final double finalAmount = widget.totalAmount ?? cartProvider.grandTotal;
+            final double finalAmount =
+                widget.totalAmount ?? cartProvider.grandTotal;
             final bookingIdVal = resData['booking_id']?.toString() ?? '';
             final bookingDateVal = widget.bookingDate ?? '';
             final timeSlotVal = widget.timeSlot ?? '';
@@ -111,7 +125,9 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         }
       } else {
         setState(() {
-          _errorMessage = res.data['message'] ?? 'Failed to place booking. Please try again.';
+          _errorMessage =
+              res.data['message'] ??
+              'Failed to place booking. Please try again.';
           _submitting = false;
         });
       }
@@ -137,39 +153,46 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            
             void simulateSuccess() async {
               setModalState(() {
                 step = 'processing';
               });
 
-              final cartProv = Provider.of<CartProvider>(this.context, listen: false);
+              final cartProv = Provider.of<CartProvider>(
+                this.context,
+                listen: false,
+              );
               final router = GoRouter.of(this.context);
               final bookingDateVal = widget.bookingDate ?? '';
               final timeSlotVal = widget.timeSlot ?? '';
-              
+
               await Future.delayed(const Duration(seconds: 2));
-              
+
               try {
                 final verifyPayload = {
                   'booking_id': _bookingId,
-                  'razorpay_payment_id': 'pay_mock_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
+                  'razorpay_payment_id':
+                      'pay_mock_${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
                   'razorpay_order_id': _razorpayOrderId,
                   'razorpay_signature': 'mock_sig',
                 };
-                final verifyRes = await ApiClient.instance.post('/customer/bookings/verify', data: verifyPayload);
-                if (verifyRes.data != null && verifyRes.data['success'] == true) {
+                final verifyRes = await ApiClient.instance.post(
+                  '/customer/bookings/verify',
+                  data: verifyPayload,
+                );
+                if (verifyRes.data != null &&
+                    verifyRes.data['success'] == true) {
                   setModalState(() {
                     step = 'success';
                   });
-                  
+
                   final serviceName = cartProv.cart.isNotEmpty
                       ? cartProv.cart.first.name
                       : '';
 
                   cartProv.clearCart();
                   await Future.delayed(const Duration(milliseconds: 1500));
-                  if (mounted) {
+                  if (context.mounted) {
                     Navigator.pop(context); // Close sheet
                     router.go(
                       '/booking-success',
@@ -244,7 +267,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                               color: const Color(0xFFEFF6FF),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Icon(Icons.shield_outlined, color: Color(0xFF002970), size: 18),
+                            child: const Icon(
+                              Icons.shield_outlined,
+                              color: Color(0xFF002970),
+                              size: 18,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Column(
@@ -273,7 +300,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                       if (step != 'processing' && step != 'success')
                         IconButton(
                           onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close, color: Color(0xFF64748B), size: 22),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Color(0xFF64748B),
+                            size: 22,
+                          ),
                         ),
                     ],
                   ),
@@ -281,7 +312,10 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
 
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(8),
@@ -388,11 +422,18 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                       onTap: simulateFailure,
                       borderRadius: BorderRadius.circular(8),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8.0,
+                          horizontal: 12,
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 16),
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Color(0xFFDC2626),
+                              size: 16,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               'Simulate Payment Failure',
@@ -414,7 +455,9 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                       alignment: Alignment.center,
                       child: Column(
                         children: [
-                          const CircularProgressIndicator(color: AppTheme.primary),
+                          const CircularProgressIndicator(
+                            color: AppTheme.primary,
+                          ),
                           const SizedBox(height: 20),
                           Text(
                             'Processing Payment',
@@ -462,7 +505,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                               shape: BoxShape.circle,
                               color: Color(0xFFDCFCE7),
                             ),
-                            child: const Icon(Icons.check, color: Color(0xFF16A34A), size: 36),
+                            child: const Icon(
+                              Icons.check,
+                              color: Color(0xFF16A34A),
+                              size: 36,
+                            ),
                           ),
                           const SizedBox(height: 20),
                           Text(
@@ -500,7 +547,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                               shape: BoxShape.circle,
                               color: Color(0xFFFEE2E2),
                             ),
-                            child: const Icon(Icons.close, color: Color(0xFFDC2626), size: 36),
+                            child: const Icon(
+                              Icons.close,
+                              color: Color(0xFFDC2626),
+                              size: 36,
+                            ),
                           ),
                           const SizedBox(height: 20),
                           Text(
@@ -538,7 +589,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.refresh, size: 18, color: Colors.white),
+                                const Icon(
+                                  Icons.refresh,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
                                 const SizedBox(width: 6),
                                 Text(
                                   'Try Again',
@@ -706,13 +761,18 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          color: isSelected ? AppTheme.primary : const Color(0xFF334155),
+                          color: isSelected
+                              ? AppTheme.primary
+                              : const Color(0xFF334155),
                         ),
                       ),
                       if (showBadge) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFF002970),
                             borderRadius: BorderRadius.circular(4),
@@ -748,7 +808,9 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? AppTheme.primary : const Color(0xFFCBD5E1),
+                  color: isSelected
+                      ? AppTheme.primary
+                      : const Color(0xFFCBD5E1),
                   width: 2,
                 ),
               ),
@@ -783,10 +845,13 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         selectedAddress.houseNo,
         selectedAddress.landmark,
         selectedAddress.city,
-        selectedAddress.state
+        selectedAddress.state,
       ].where((p) => p != null && p.trim().isNotEmpty).toList();
-      selectedAddressText = parts.join(', ') +
-          (selectedAddress.pincode.isNotEmpty ? ' - ${selectedAddress.pincode}' : '');
+      selectedAddressText =
+          parts.join(', ') +
+          (selectedAddress.pincode.isNotEmpty
+              ? ' - ${selectedAddress.pincode}'
+              : '');
     } else {
       selectedAddressText = 'No address selected';
     }
@@ -811,10 +876,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
-          child: Container(
-            color: AppTheme.border,
-            height: 1.0,
-          ),
+          child: Container(color: AppTheme.border, height: 1.0),
         ),
       ),
       body: Stack(
@@ -841,7 +903,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.receipt_long_outlined, color: AppTheme.primary, size: 16),
+                              child: const Icon(
+                                Icons.receipt_long_outlined,
+                                color: AppTheme.primary,
+                                size: 16,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Text(
@@ -856,7 +922,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Service Info
                         if (cartProvider.cart.isNotEmpty) ...[
                           Row(
@@ -865,16 +931,22 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Image.network(
-                                  cartProvider.cart.first.image ?? 'https://joharfix.com/assets/images/logo.jpeg',
+                                  cartProvider.cart.first.image ??
+                                      'https://joharfix.com/assets/images/logo.jpeg',
                                   width: 56,
                                   height: 56,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => Container(
-                                    width: 56,
-                                    height: 56,
-                                    color: Colors.grey[200],
-                                    child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
-                                  ),
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                        width: 56,
+                                        height: 56,
+                                        color: Colors.grey[200],
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          size: 24,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
                                 ),
                               ),
                               const SizedBox(width: 14),
@@ -908,9 +980,14 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                               if (cartProvider.cart.length > 1) ...[
                                 const SizedBox(width: 8),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primary.withValues(alpha: 0.08),
+                                    color: AppTheme.primary.withValues(
+                                      alpha: 0.08,
+                                    ),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -940,7 +1017,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.calendar_today_outlined, color: AppTheme.primary, size: 16),
+                              child: const Icon(
+                                Icons.calendar_today_outlined,
+                                color: AppTheme.primary,
+                                size: 16,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -983,7 +1064,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.location_on_outlined, color: AppTheme.primary, size: 16),
+                              child: const Icon(
+                                Icons.location_on_outlined,
+                                color: AppTheme.primary,
+                                size: 16,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -1038,7 +1123,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.account_balance_wallet_outlined, color: AppTheme.primary, size: 16),
+                              child: const Icon(
+                                Icons.account_balance_wallet_outlined,
+                                color: AppTheme.primary,
+                                size: 16,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Text(
@@ -1091,7 +1180,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(Icons.local_offer_outlined, color: AppTheme.primary, size: 16),
+                              child: const Icon(
+                                Icons.local_offer_outlined,
+                                color: AppTheme.primary,
+                                size: 16,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Text(
@@ -1172,7 +1265,11 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.shield_outlined, color: Color(0xFF16A34A), size: 18),
+                      const Icon(
+                        Icons.shield_outlined,
+                        color: Color(0xFF16A34A),
+                        size: 18,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         '100% Safe & Secure Payment',
@@ -1210,7 +1307,7 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
               ],
             ),
           ),
-          
+
           if (_submitting)
             Container(
               color: Colors.black.withValues(alpha: 0.4),
@@ -1308,14 +1405,20 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            _selectedMode == 'online' ? 'Pay Now' : 'Confirm Booking',
+                            _selectedMode == 'online'
+                                ? 'Pay Now'
+                                : 'Confirm Booking',
                             style: GoogleFonts.inter(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                           const SizedBox(width: 6),
-                          const Icon(Icons.arrow_forward, size: 18, color: Colors.white),
+                          const Icon(
+                            Icons.arrow_forward,
+                            size: 18,
+                            color: Colors.white,
+                          ),
                         ],
                       ),
               ),
