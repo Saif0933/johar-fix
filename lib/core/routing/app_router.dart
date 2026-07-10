@@ -25,6 +25,7 @@ import '../../features/cart/booking_success_screen.dart';
 // to prevent compilation errors and allow navigation to work.
 import '../../features/home/home_screen.dart';
 import '../../features/bookings/bookings_screen.dart';
+import '../../features/bookings/booking_details_screen.dart';
 import '../../features/cart/cart_view.dart';
 import '../../features/profile/profile_screen.dart';
 import '../../features/profile/edit_profile_screen.dart';
@@ -200,6 +201,16 @@ class AppRouter {
         GoRoute(
           path: '/edit-profile',
           builder: (context, state) => const EditProfileScreen(),
+        ),
+        GoRoute(
+          path: '/booking-details',
+          builder: (context, state) {
+            final Map<String, dynamic> extra = state.extra is Map
+                ? Map<String, dynamic>.from(state.extra as Map)
+                : {};
+            final id = extra['id']?.toString() ?? state.uri.queryParameters['id']?.toString() ?? '';
+            return BookingDetailsScreen(bookingId: id);
+          },
         ),
       ],
     );

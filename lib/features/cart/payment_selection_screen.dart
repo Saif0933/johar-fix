@@ -45,19 +45,31 @@ class _PaymentSelectionScreenState extends State<PaymentSelectionScreen> {
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
     final addressProvider = Provider.of<AddressProvider>(context, listen: false);
     
-    final itemsPayload = cartProvider.cart.map((item) => {
-      'service_id': item.id,
-      'qty': item.qty,
-    }).toList();
+    final firstServiceIdVal = cartProvider.cart.isNotEmpty ? cartProvider.cart.first.id : '';
+    final serviceIdInt = int.tryParse(firstServiceIdVal.toString()) ?? 0;
+    
+    final selectedAddressIdVal = addressProvider.selectedAddress?.id ?? '';
+    final addressIdInt = int.tryParse(selectedAddressIdVal.toString()) ?? 0;
+
+    final paymentMethodVal = _selectedMode == 'cod' ? 'cash' : 'online';
 
     final payload = {
-      'items': itemsPayload,
-      'address_id': addressProvider.selectedAddress?.id,
-      'payment_mode': _selectedMode,
-      'total_amount': widget.totalAmount ?? cartProvider.grandTotal,
+      'service_id': serviceIdInt,
+      'address_id': addressIdInt,
+      'payment_method': paymentMethodVal,
       if (widget.bookingDate != null) 'booking_date': widget.bookingDate,
       if (widget.timeSlot != null) 'time_slot': widget.timeSlot,
-      if (widget.couponCode != null && widget.couponCode!.isNotEmpty) 'coupon_code': widget.couponCode,
+      'coupon_code': (widget.couponCode != null && widget.couponCode!.isNotEmpty)
+          ? widget.couponCode
+          : null,
+      
+      // Fallbacks in case other parts of backend use these keys
+      'items': cartProvider.cart.map((item) => {
+        'service_id': item.id,
+        'qty': item.qty,
+      }).toList(),
+      'payment_mode': _selectedMode,
+      'total_amount': widget.totalAmount ?? cartProvider.grandTotal,
     };
 
     final serviceName = cartProvider.cart.isNotEmpty ? cartProvider.cart.first.name : '';

@@ -604,9 +604,11 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
       ),
       child: InkWell(
         onTap: () {
-          // Show bottom sheet or snackbar since detailed view is out of scope / not implemented
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Details for Booking #${booking.id.substring(booking.id.length - 8).toUpperCase()} coming soon!')),
+          context.push(
+            Uri(
+              path: '/booking-details',
+              queryParameters: {'id': booking.id},
+            ).toString(),
           );
         },
         borderRadius: BorderRadius.circular(12),
